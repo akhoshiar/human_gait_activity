@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Human Gait and Inverted Pendulum Activity</title>
+
+<style>
+  :root{
+    --blue:#1f62c4;
+    --red:#d94b3d;
+    --ink:#1c2430;
+    --muted:#667085;
+    --line:#d9dee8;
+    --panel:#f7f9fc;
+    --accent:#eef4ff;
+  }
+
+  *{
+    box-sizing:border-box;
+  }
+
+  body{
+    margin:0;
+    font-family:Inter, Segoe UI, Arial, sans-serif;
+    color:var(--ink);
+    background:#eef1f6;
+  }
+
+  .page{
+    max-width:1500px;
+    margin:0 auto;
+    padding:22px;
+  }
+
+  header{
+    background:white;
+    border-radius:18px;
+    padding:22px 26px;
+    box-shadow:0 8px 24px rgba(25,40,70,.08);
+    margin-bottom:18px;
+  }
+
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(25px,2.2vw,38px);
+  }
+
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:15px;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 340px;
+    gap:18px;
+  }
+
+  .card{
+    background:white;
+    border-radius:18px;
+    box-shadow:0 8px 24px rgba(25,40,70,.08);
+  }
+
+  .stage{
+    padding:16px;
+    min-height:690px;
+    position:relative;
+  }
+
+  canvas{
+    width:100%;
+    height:620px;
+    display:block;
+    border-radius:14px;
+    background:linear-gradient(#ffffff,#fbfcff);
+  }
+
+  .legend{
+    position:absolute;
+    left:34px;
+    top:34px;
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .legend span::before{
+    content:"";
+    width:20px;
+    height:4px;
+    display:inline-block;
+    margin-right:7px;
+    vertical-align:middle;
+    border-radius:3px;
+  }
+
+  .legend .anat::before{
+    background:var(--blue);
+  }
+
+  .legend .pend::before{
+    background:var(--red);
+  }
+
+  .sidebar{
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .panel{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    background:var(--panel);
+  }
+
+  .panel h2{
+    font-size:15px;
+    margin:0 0 12px;
+  }
+
+  label{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    font-weight:700;
+    margin-bottom:7px;
+  }
+
+  output{
+    color:var(--blue);
+    font-variant-numeric:tabular-nums;
+  }
+
+  input[type=range]{
+    width:100%;
+    accent-color:var(--blue);
+    margin:0 0 13px;
+  }
+
+  select,
+  button{
+    width:100%;
+    border:1px solid var(--line);
+    background:white;
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+  }
+
+  button{
+    font-weight:800;
+    cursor:pointer;
+  }
+
+  button.primary{
+    background:var(--blue);
+    color:white;
+    border-color:var(--blue);
+  }
+
+  .buttonRow{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .toggle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    margin:8px 0;
+  }
+
+  .toggle input{
+    transform:scale(1.15);
+  }
+
+  .metricGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .metric{
+    background:white;
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:10px;
+  }
+
+  .metric small{
+    display:block;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+
+  .metric strong{
+    font-size:17px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .challenge{
+    background:var(--accent);
+    border-color:#cddcff;
+  }
+
+  .challenge p{
+    margin:0;
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  .question{
+    margin-top:10px;
+    padding:10px;
+    background:white;
+    border-radius:10px;
+    border-left:4px solid var(--blue);
+    font-size:13px;
+    line-height:1.4;
+  }
+
+  .footerNote{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.4;
+  }
+
+  @media(max-width:1000px){
+    .layout{
+      grid-template-columns:1fr;
+    }
+
+    .stage{
+      min-height:560px;
+    }
+
+    canvas{
+      height:500px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <header>
+    <h1>
+      Human Stance Phase and the Inverted-Pendulum Approximation
+    </h1>
+
+    <p>
+      Interactive teaching activity: vary the pendulum parameters and compare
+      the predicted centre-of-mass path with a simplified anatomical gait model.
+    </p>
+  </header>
+
+  <div class="layout">
+
+    <section class="card stage">
+
+      <div class="legend">
+        <span class="anat">Anatomical model</span>
+        <span class="pend">Inverted pendulum</span>
+      </div>
+
+      <canvas
+        id="gaitCanvas"
+        width="1100"
+        height="620">
+      </canvas>
+
+    </section>
+
+    <aside class="card sidebar">
+
+      <div class="panel">
+
+        <h2>Model controls</h2>
+
+        <label for="legLength">
+          Pendulum length, L
+          <output id="legOut">0.86 m</output>
+        </label>
+
+        <input
+          id="legLength"
+          type="range"
+          min="0.60"
+          max="1.10"
+          step="0.01"
+          value="0.86">
+
+        <label for="angleScale">
+          Lean-angle scale
+          <output id="angleOut">100%</output>
+        </label>
+
+        <input
+          id="angleScale"
+          type="range"
+          min="40"
+          max="160"
+          step="5"
+          value="100">
+
+        <label for="speed">
+          Animation speed
+          <output id="speedOut">1.0×</output>
+        </label>
+
+        <input
+          id="speed"
+          type="range"
+          min="0.3"
+          max="2.5"
+          step="0.1"
+          value="1.0">
+
+        <label for="phaseSelect">
+          Current gait phase
+        </label>
+
+        <select id="phaseSelect">
+          <option value="0">Heel strike</option>
+          <option value="1">Loading response</option>
+          <option value="2">Mid-stance</option>
+          <option value="3">Terminal stance</option>
+          <option value="4">Pre-swing</option>
+        </select>
+
+        <div class="buttonRow" style="margin-top:10px">
+
+          <button
+            id="playBtn"
+            class="primary">
+            Pause
+          </button>
+
+          <button id="resetBtn">
+            Reset
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="panel">
+
+        <h2>Display options</h2>
+
+        <div class="toggle">
+          <span>Show anatomical hip path</span>
+          <input id="showHipPath" type="checkbox" checked>
+        </div>
+
+        <div class="toggle">
+          <span>Show pendulum arc</span>
+          <input id="showArc" type="checkbox" checked>
+        </div>
+
+        <div class="toggle">
+          <span>Show previous poses</span>
+          <input id="showPrevious" type="checkbox" checked>
+        </div>
+
+      </div>
+
+      <div class="panel">
+
+        <h2>Live measurements</h2>
+
+        <div class="metricGrid">
+
+          <div class="metric">
+            <small>Lean angle</small>
+            <strong id="thetaMetric">0.0°</strong>
+          </div>
+
+          <div class="metric">
+            <small>COM drop</small>
+            <strong id="dropMetric">0.0 mm</strong>
+          </div>
+
+          <div class="metric">
+            <small>Forward displacement</small>
+            <strong id="xMetric">0.0 mm</strong>
+          </div>
+
+          <div class="metric">
+            <small>Pendulum height</small>
+            <strong id="yMetric">0.0 mm</strong>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="panel challenge">
+
+        <h2>Student challenge</h2>
+
+        <p>
+          Adjust <strong>L</strong> and the lean-angle scale to make the red
+          pendulum trajectory match the grey anatomical hip trajectory as
+          closely as possible.
+        </p>
+
+        <div class="question">
+          Which parameter has the greatest effect on centre-of-mass drop,
+          and why?
+        </div>
+
+      </div>
+
+      <div class="footerNote">
+        This is an illustrative teaching model rather than a clinical gait
+        dataset.
+      </div>
+
+    </aside>
+
+  </div>
+</div>
+
+<script>
+
+const canvas = document.getElementById("gaitCanvas");
+const ctx = canvas.getContext("2d");
+
+const phaseNames = [
+  "Heel strike",
+  "Loading response",
+  "Mid-stance",
+  "Terminal stance",
+  "Pre-swing"
+];
+
+const shortNames = [
+  "HS",
+  "LR",
+  "MS",
+  "TS",
+  "PS"
+];
+
+/*
+  Simplified anatomical model.
+  All geometric values are in metres.
+*/
+
+const model = {
+  Lthigh: 0.43,
+  Lshank: 0.43,
+  heelPart: 0.075,
+  toePart: 0.175,
+  groundY: 0,
+
+  contactType: [1, 1, 2, 3, 3],
+
+  footDeg: [
+    12,
+    2,
+    0,
+    -18,
+    -35
+  ],
+
+  hipX: [
+    -0.30,
+    -0.20,
+    0.02,
+    0.24,
+    0.38
+  ],
+
+  kneeFlexDeg: [
+    5,
+    15,
+    3,
+    5,
+    35
+  ],
+
+  heelX: 0
+};
+
+const ui = {
+
+  legLength:
+    document.getElementById("legLength"),
+
+  angleScale:
+    document.getElementById("angleScale"),
+
+  speed:
+    document.getElementById("speed"),
+
+  phaseSelect:
+    document.getElementById("phaseSelect"),
+
+  playBtn:
+    document.getElementById("playBtn"),
+
+  resetBtn:
+    document.getElementById("resetBtn"),
+
+  showHipPath:
+    document.getElementById("showHipPath"),
+
+  showArc:
+    document.getElementById("showArc"),
+
+  showPrevious:
+    document.getElementById("showPrevious"),
+
+  legOut:
+    document.getElementById("legOut"),
+
+  angleOut:
+    document.getElementById("angleOut"),
+
+  speedOut:
+    document.getElementById("speedOut"),
+
+  thetaMetric:
+    document.getElementById("thetaMetric"),
+
+  dropMetric:
+    document.getElementById("dropMetric"),
+
+  xMetric:
+    document.getElementById("xMetric"),
+
+  yMetric:
+    document.getElementById("yMetric")
+};
+
+let playing = true;
+let phaseFloat = 0;
+let lastTime = performance.now();
+
+function deg2rad(degrees){
+  return degrees * Math.PI / 180;
+}
+
+function lerp(a, b, t){
+  return a + (b - a) * t;
+}
+
+function smoothstep(t){
+  return t * t * (3 - 2 * t);
+}
+
+/*
+  Solve for the forward knee position from the hip and ankle positions.
+*/
+
+function solveKneeAnterior(hip, ankle, L1, L2){
+
+  const dx = ankle.x - hip.x;
+  const dy = ankle.y - hip.y;
+
+  const distance = Math.hypot(dx, dy);
+
+  const a =
+    (L1 * L1 - L2 * L2 + distance * distance) /
+    (2 * distance);
+
+  const h =
+    Math.sqrt(
+      Math.max(
+        L1 * L1 - a * a,
+        0
+      )
+    );
+
+  const midpointX =
+    hip.x + a * dx / distance;
+
+  const midpointY =
+    hip.y + a * dy / distance;
+
+  const perpendicularX =
+    -dy / distance;
+
+  const perpendicularY =
+    dx / distance;
+
+  const candidate1 = {
+    x: midpointX + h * perpendicularX,
+    y: midpointY + h * perpendicularY
+  };
+
+  const candidate2 = {
+    x: midpointX - h * perpendicularX,
+    y: midpointY - h * perpendicularY
+  };
+
+  return candidate1.x > candidate2.x
+    ? candidate1
+    : candidate2;
+}
+
+/*
+  Build the five anatomical stance-phase poses.
+*/
+
+function buildPoses(){
+
+  const poses = [];
+
+  const toeX =
+    model.heelX +
+    model.heelPart +
+    model.toePart;
+
+  for(let k = 0; k < 5; k++){
+
+    const footAngle =
+      deg2rad(model.footDeg[k]);
+
+    let heel;
+    let ankle;
+    let toe;
+
+    /*
+      Contact type:
+      1 = heel contact
+      2 = flat foot
+      3 = toe contact
+    */
+
+    if(
+      model.contactType[k] === 1 ||
+      model.contactType[k] === 2
+    ){
+
+      heel = {
+        x: model.heelX,
+        y: 0
+      };
+
+      ankle = {
+        x:
+          heel.x +
+          model.heelPart *
+          Math.cos(footAngle),
+
+        y:
+          heel.y +
+          model.heelPart *
+          Math.sin(footAngle)
+      };
+
+      toe = {
+        x:
+          ankle.x +
+          model.toePart *
+          Math.cos(footAngle),
+
+        y:
+          ankle.y +
+          model.toePart *
+          Math.sin(footAngle)
+      };
+
+    } else {
+
+      toe = {
+        x: toeX,
+        y: 0
+      };
+
+      ankle = {
+        x:
+          toe.x -
+          model.toePart *
+          Math.cos(footAngle),
+
+        y:
+          toe.y -
+          model.toePart *
+          Math.sin(footAngle)
+      };
+
+      heel = {
+        x:
+          ankle.x -
+          model.heelPart *
+          Math.cos(footAngle),
+
+        y:
+          ankle.y -
+          model.heelPart *
+          Math.sin(footAngle)
+      };
+    }
+
+    const kneeFlex =
+      deg2rad(model.kneeFlexDeg[k]);
+
+    const hipAnkleDistance =
+      Math.sqrt(
+        model.Lthigh ** 2 +
+        model.Lshank ** 2 +
+        2 *
+        model.Lthigh *
+        model.Lshank *
+        Math.cos(kneeFlex)
+      );
+
+    const horizontalDifference =
+      model.hipX[k] - ankle.x;
+
+    const hip = {
+
+      x:
+        model.hipX[k],
+
+      y:
+        ankle.y +
+        Math.sqrt(
+          Math.max(
+            hipAnkleDistance ** 2 -
+            horizontalDifference ** 2,
+            0
+          )
+        )
+    };
+
+    const knee =
+      solveKneeAnterior(
+        hip,
+        ankle,
+        model.Lthigh,
+        model.Lshank
+      );
+
+    poses.push({
+      hip,
+      knee,
+      ankle,
+      heel,
+      toe
+    });
+  }
+
+  return poses;
+}
+
+const poses = buildPoses();
+
+/*
+  Effective pendulum pivot at the stance ankle.
+*/
+
+const pendPivot = {
+  x:
+    model.heelX +
+    model.heelPart,
+
+  y: 0
+};
+
+function interpPoint(a, b, t){
+
+  return {
+    x: lerp(a.x, b.x, t),
+    y: lerp(a.y, b.y, t)
+  };
+}
+
+function interpPose(a, b, t){
+
+  return {
+
+    hip:
+      interpPoint(
+        a.hip,
+        b.hip,
+        t
+      ),
+
+    knee:
+      interpPoint(
+        a.knee,
+        b.knee,
+        t
+      ),
+
+    ankle:
+      interpPoint(
+        a.ankle,
+        b.ankle,
+        t
+      ),
+
+    heel:
+      interpPoint(
+        a.heel,
+        b.heel,
+        t
+      ),
+
+    toe:
+      interpPoint(
+        a.toe,
+        b.toe,
+        t
+      )
+  };
+}
+
+/*
+  Calculate the current anatomical and pendulum states.
+*/
+
+function currentState(){
+
+  const phaseIndex =
+    Math.floor(phaseFloat);
+
+  const nextPhase =
+    Math.min(
+      phaseIndex + 1,
+      4
+    );
+
+  const interpolation =
+    smoothstep(
+      phaseFloat -
+      phaseIndex
+    );
+
+  const pose =
+    interpPose(
+      poses[phaseIndex],
+      poses[nextPhase],
+      interpolation
+    );
+
+  const L =
+    parseFloat(
+      ui.legLength.value
+    );
+
+  const angleScale =
+    parseFloat(
+      ui.angleScale.value
+    ) / 100;
+
+  const anatomicalXRel =
+    pose.hip.x -
+    pendPivot.x;
+
+  /*
+    Reference length of 0.86 m is used to infer the nominal
+    pendulum angle from the anatomical horizontal displacement.
+  */
+
+  const nominalTheta =
+    Math.asin(
+      Math.max(
+        -0.999,
+        Math.min(
+          0.999,
+          anatomicalXRel / 0.86
+        )
+      )
+    );
+
+  const theta =
+    nominalTheta *
+    angleScale;
+
+  const com = {
+
+    x:
+      pendPivot.x +
+      L *
+      Math.sin(theta),
+
+    y:
+      pendPivot.y +
+      L *
+      Math.cos(theta)
+  };
+
+  const drop =
+    L *
+    (
+      1 -
+      Math.cos(theta)
+    );
+
+  const xRel =
+    L *
+    Math.sin(theta);
+
+  return {
+    pose,
+    phaseIndex,
+    theta,
+    com,
+    L,
+    drop,
+    xRel
+  };
+}
+
+/*
+  Convert model coordinates in metres to canvas coordinates.
+*/
+
+function worldToCanvas(point){
+
+  const xMin = -0.50;
+  const xMax = 0.58;
+
+  const yMin = -0.08;
+  const yMax = 1.06;
+
+  const padding = {
+    left: 70,
+    right: 45,
+    top: 65,
+    bottom: 55
+  };
+
+  return {
+
+    x:
+      padding.left +
+      (
+        point.x -
+        xMin
+      ) /
+      (
+        xMax -
+        xMin
+      ) *
+      (
+        canvas.width -
+        padding.left -
+        padding.right
+      ),
+
+    y:
+      canvas.height -
+      padding.bottom -
+      (
+        point.y -
+        yMin
+      ) /
+      (
+        yMax -
+        yMin
+      ) *
+      (
+        canvas.height -
+        padding.top -
+        padding.bottom
+      )
+  };
+}
+
+function line(
+  start,
+  end,
+  width,
+  colour,
+  dash = []
+){
+
+  const A =
+    worldToCanvas(start);
+
+  const B =
+    worldToCanvas(end);
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    colour;
+
+  ctx.lineWidth =
+    width;
+
+  ctx.lineCap =
+    "round";
+
+  ctx.setLineDash(
+    dash
+  );
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    A.x,
+    A.y
+  );
+
+  ctx.lineTo(
+    B.x,
+    B.y
+  );
+
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function circle(
+  point,
+  radius,
+  fill,
+  stroke = "#111"
+){
+
+  const P =
+    worldToCanvas(point);
+
+  ctx.beginPath();
+
+  ctx.arc(
+    P.x,
+    P.y,
+    radius,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    fill;
+
+  ctx.fill();
+
+  ctx.strokeStyle =
+    stroke;
+
+  ctx.lineWidth =
+    1.5;
+
+  ctx.stroke();
+}
+
+function textWorld(
+  text,
+  point,
+  options = {}
+){
+
+  const P =
+    worldToCanvas(point);
+
+  ctx.save();
+
+  ctx.fillStyle =
+    options.color ||
+    "#1c2430";
+
+  ctx.font =
+    `${options.weight || 600} ${options.size || 15}px Segoe UI, Arial`;
+
+  ctx.textAlign =
+    options.align ||
+    "center";
+
+  ctx.textBaseline =
+    options.baseline ||
+    "middle";
+
+  ctx.fillText(
+    text,
+    P.x,
+    P.y
+  );
+
+  ctx.restore();
+}
+
+function drawArrow(){
+
+  const A =
+    worldToCanvas({
+      x: -0.42,
+      y: 0.46
+    });
+
+  const B =
+    worldToCanvas({
+      x: -0.18,
+      y: 0.46
+    });
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "#111";
+
+  ctx.fillStyle =
+    "#111";
+
+  ctx.lineWidth =
+    2;
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    A.x,
+    A.y
+  );
+
+  ctx.lineTo(
+    B.x,
+    B.y
+  );
+
+  ctx.stroke();
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    B.x,
+    B.y
+  );
+
+  ctx.lineTo(
+    B.x - 12,
+    B.y - 6
+  );
+
+  ctx.lineTo(
+    B.x - 12,
+    B.y + 6
+  );
+
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font =
+    "600 15px Segoe UI, Arial";
+
+  ctx.textAlign =
+    "center";
+
+  ctx.fillText(
+    "Walking direction",
+    (A.x + B.x) / 2,
+    A.y - 20
+  );
+
+  ctx.restore();
+}
+
+function drawPose(
+  pose,
+  colour = "#1f62c4",
+  alpha = 1,
+  thin = false
+){
+
+  ctx.save();
+
+  ctx.globalAlpha =
+    alpha;
+
+  line(
+    pose.hip,
+    pose.knee,
+    thin ? 5 : 12,
+    colour
+  );
+
+  line(
+    pose.knee,
+    pose.ankle,
+    thin ? 4.5 : 11,
+    colour
+  );
+
+  line(
+    pose.heel,
+    pose.toe,
+    thin ? 4 : 8,
+    colour
+  );
+
+  line(
+    {
+      x:
+        pose.hip.x -
+        0.07,
+
+      y:
+        pose.hip.y
+    },
+
+    {
+      x:
+        pose.hip.x +
+        0.07,
+
+      y:
+        pose.hip.y
+    },
+
+    thin ? 4 : 9,
+
+    thin
+      ? colour
+      : "#333"
+  );
+
+  if(!thin){
+
+    circle(
+      pose.hip,
+      6,
+      "white"
+    );
+
+    circle(
+      pose.knee,
+      6,
+      "white"
+    );
+
+    circle(
+      pose.ankle,
+      6,
+      "white"
+    );
+  }
+
+  ctx.restore();
+}
+
+/*
+  Draw the complete scene.
+*/
+
+function draw(){
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  line(
+    {
+      x: -0.58,
+      y: 0
+    },
+
+    {
+      x: 0.68,
+      y: 0
+    },
+
+    3,
+    "#111"
+  );
+
+  drawArrow();
+
+  const state =
+    currentState();
+
+  ctx.save();
+
+  ctx.fillStyle =
+    "#111";
+
+  ctx.font =
+    "700 26px Segoe UI, Arial";
+
+  ctx.textAlign =
+    "center";
+
+  ctx.fillText(
+    phaseNames[state.phaseIndex],
+    canvas.width / 2,
+    48
+  );
+
+  ctx.restore();
+
+  /*
+    Draw previous anatomical poses.
+  */
+
+  if(ui.showPrevious.checked){
+
+    for(
+      let k = 0;
+      k < state.phaseIndex;
+      k++
+    ){
+
+      drawPose(
+        poses[k],
+        "#cfd4dc",
+        0.85,
+        true
+      );
+    }
+  }
+
+  /*
+    Draw anatomical hip trajectory.
+  */
+
+  if(ui.showHipPath.checked){
+
+    ctx.save();
+
+    ctx.strokeStyle =
+      "#7a7f88";
+
+    ctx.lineWidth =
+      2;
+
+    ctx.setLineDash([
+      8,
+      7
+    ]);
+
+    ctx.beginPath();
+
+    poses.forEach(
+      (pose, index) => {
+
+        const point =
+          worldToCanvas(
+            pose.hip
+          );
+
+        if(index === 0){
+
+          ctx.moveTo(
+            point.x,
+            point.y
+          );
+
+        } else {
+
+          ctx.lineTo(
+            point.x,
+            point.y
+          );
+        }
+      }
+    );
+
+    ctx.stroke();
+    ctx.restore();
+
+    textWorld(
+      "Anatomical hip trajectory",
+      {
+        x: 0.18,
+        y: 0.99
+      },
+      {
+        size: 13,
+        color: "#666"
+      }
+    );
+  }
+
+  /*
+    Draw ideal inverted-pendulum arc.
+  */
+
+  if(ui.showArc.checked){
+
+    const L =
+      parseFloat(
+        ui.legLength.value
+      );
+
+    const scale =
+      parseFloat(
+        ui.angleScale.value
+      ) / 100;
+
+    const thetaValues =
+      poses.map(
+        pose => {
+
+          const nominal =
+            Math.asin(
+              Math.max(
+                -0.999,
+                Math.min(
+                  0.999,
+                  (
+                    pose.hip.x -
+                    pendPivot.x
+                  ) /
+                  0.86
+                )
+              )
+            );
+
+          return nominal * scale;
+        }
+      );
+
+    const minimumTheta =
+      Math.min(
+        ...thetaValues
+      );
+
+    const maximumTheta =
+      Math.max(
+        ...thetaValues
+      );
+
+    ctx.save();
+
+    ctx.strokeStyle =
+      "#d94b3d";
+
+    ctx.lineWidth =
+      2;
+
+    ctx.setLineDash([
+      3,
+      6
+    ]);
+
+    ctx.beginPath();
+
+    for(
+      let j = 0;
+      j <= 100;
+      j++
+    ){
+
+      const theta =
+        lerp(
+          minimumTheta,
+          maximumTheta,
+          j / 100
+        );
+
+      const point = {
+
+        x:
+          pendPivot.x +
+          L *
+          Math.sin(theta),
+
+        y:
+          L *
+          Math.cos(theta)
+      };
+
+      const canvasPoint =
+        worldToCanvas(point);
+
+      if(j === 0){
+
+        ctx.moveTo(
+          canvasPoint.x,
+          canvasPoint.y
+        );
+
+      } else {
+
+        ctx.lineTo(
+          canvasPoint.x,
+          canvasPoint.y
+        );
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /*
+    Draw current anatomical pose.
+  */
+
+  drawPose(
+    state.pose
+  );
+
+  /*
+    Draw inverted pendulum.
+  */
+
+  line(
+    pendPivot,
+    state.com,
+    5,
+    "#d94b3d",
+    [
+      12,
+      8
+    ]
+  );
+
+  circle(
+    pendPivot,
+    6,
+    "#111",
+    "#111"
+  );
+
+  circle(
+    state.com,
+    10,
+    "#d94b3d",
+    "#d94b3d"
+  );
+
+  /*
+    Draw stance-phase labels.
+  */
+
+  shortNames.forEach(
+    (name, index) => {
+
+      textWorld(
+        name,
+        {
+          x:
+            poses[index].hip.x,
+
+          y:
+            0.055
+        },
+        {
+          size: 13,
+          weight: 700
+        }
+      );
+    }
+  );
+
+  textWorld(
+    "HS → LR → MS → TS → PS",
+    {
+      x: 0.04,
+      y: -0.035
+    },
+    {
+      size: 14,
+      weight: 600
+    }
+  );
+
+  /*
+    Display current pendulum measurements.
+  */
+
+  const thetaDegrees =
+    state.theta *
+    180 /
+    Math.PI;
+
+  ctx.save();
+
+  ctx.fillStyle =
+    "#d94b3d";
+
+  ctx.font =
+    "700 17px Segoe UI, Arial";
+
+  ctx.textAlign =
+    "right";
+
+  ctx.fillText(
+    `θ = ${thetaDegrees.toFixed(1)}°`,
+    canvas.width - 35,
+    95
+  );
+
+  ctx.fillText(
+    `COM drop = ${(state.drop * 1000).toFixed(1)} mm`,
+    canvas.width - 35,
+    120
+  );
+
+  ctx.fillText(
+    `L = ${state.L.toFixed(2)} m`,
+    canvas.width - 35,
+    145
+  );
+
+  ctx.restore();
+
+  ui.thetaMetric.textContent =
+    `${thetaDegrees.toFixed(1)}°`;
+
+  ui.dropMetric.textContent =
+    `${(state.drop * 1000).toFixed(1)} mm`;
+
+  ui.xMetric.textContent =
+    `${(state.xRel * 1000).toFixed(1)} mm`;
+
+  ui.yMetric.textContent =
+    `${(state.com.y * 1000).toFixed(1)} mm`;
+
+  ui.phaseSelect.value =
+    String(
+      state.phaseIndex
+    );
+}
+
+/*
+  Update the values shown beside the sliders.
+*/
+
+function updateLabels(){
+
+  ui.legOut.value =
+    `${parseFloat(ui.legLength.value).toFixed(2)} m`;
+
+  ui.angleOut.value =
+    `${parseInt(ui.angleScale.value)}%`;
+
+  ui.speedOut.value =
+    `${parseFloat(ui.speed.value).toFixed(1)}×`;
+}
+
+/*
+  Animation loop.
+*/
+
+function animate(currentTime){
+
+  const deltaTime =
+    (
+      currentTime -
+      lastTime
+    ) /
+    1000;
+
+  lastTime =
+    currentTime;
+
+  if(playing){
+
+    phaseFloat +=
+      deltaTime *
+      parseFloat(ui.speed.value) *
+      0.75;
+
+    if(phaseFloat >= 4.999){
+
+      phaseFloat = 0;
+    }
+  }
+
+  draw();
+
+  requestAnimationFrame(
+    animate
+  );
+}
+
+/*
+  Slider event listeners.
+*/
+
+[
+  "legLength",
+  "angleScale",
+  "speed"
+].forEach(
+  id => {
+
+    ui[id].addEventListener(
+      "input",
+      () => {
+
+        updateLabels();
+        draw();
+      }
+    );
+  }
+);
+
+/*
+  Display-option event listeners.
+*/
+
+[
+  "showHipPath",
+  "showArc",
+  "showPrevious"
+].forEach(
+  id => {
+
+    ui[id].addEventListener(
+      "change",
+      draw
+    );
+  }
+);
+
+/*
+  Manual phase selection.
+*/
+
+ui.phaseSelect.addEventListener(
+  "change",
+  () => {
+
+    phaseFloat =
+      parseInt(
+        ui.phaseSelect.value
+      );
+
+    playing =
+      false;
+
+    ui.playBtn.textContent =
+      "Play";
+
+    draw();
+  }
+);
+
+/*
+  Play and pause.
+*/
+
+ui.playBtn.addEventListener(
+  "click",
+  () => {
+
+    playing =
+      !playing;
+
+    ui.playBtn.textContent =
+      playing
+        ? "Pause"
+        : "Play";
+  }
+);
+
+/*
+  Reset all activity parameters.
+*/
+
+ui.resetBtn.addEventListener(
+  "click",
+  () => {
+
+    ui.legLength.value =
+      "0.86";
+
+    ui.angleScale.value =
+      "100";
+
+    ui.speed.value =
+      "1.0";
+
+    ui.showHipPath.checked =
+      true;
+
+    ui.showArc.checked =
+      true;
+
+    ui.showPrevious.checked =
+      true;
+
+    phaseFloat =
+      0;
+
+    playing =
+      true;
+
+    ui.playBtn.textContent =
+      "Pause";
+
+    updateLabels();
+    draw();
+  }
+);
+
+updateLabels();
+draw();
+
+requestAnimationFrame(
+  animate
+);
+
+</script>
+
+</body>
+</html>
